@@ -1,0 +1,15 @@
+{ parameter (or (pair %set_rsa_key (nat %n) (nat %v)) (nat %set_n)) ;
+  storage
+    (pair (pair %rsa_key (nat %n) (nat %v)) (nat %vote_state) (nat %vote_count) (nat %n)) ;
+  code { UNPAIR ;
+         IF_LEFT
+           { UPDATE 1 }
+           { PUSH nat 1 ;
+             DUP 2 ;
+             COMPARE ;
+             LE ;
+             IF { PUSH string "n must be greater than 1" ; FAILWITH } {} ;
+             UPDATE 6 } ;
+         NIL operation ;
+         PAIR } }
+
