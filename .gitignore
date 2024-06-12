@@ -1,2 +1,4 @@
 *.deb
 */.ligo
+test.py
+*.pyc
