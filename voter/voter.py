@@ -2,6 +2,10 @@ from typing import List, Tuple, Callable, Literal
 import secrets
 import math
 import hashlib
+import sys
+
+sys.setrecursionlimit(10**6)
+
 
 def extended_gcd(a:int,b:int) -> Tuple[int,int,int]:
     """Extended Euclidean Algorithm to find the GCD and the coefficients of a,b."""
@@ -18,20 +22,27 @@ def modinv(a:int,m:int) -> int:
     else:
         return x % m
 
+def fast_modexp(base:int,exp:int,mod:int) -> int:
+    """Fast modular exponentiation."""
+    result = 1
+    base = base % mod
+    while exp > 0:
+        if exp % 2 == 1:
+            result = (result * base) % mod
+        exp = exp >> 1
+        base = (base * base) % mod
+    return result
 
 class Voter:
-    def __init__(self):
-        """Construct Voter with default settings and random key."""
-        self.choice_length : int = 4    # in bytes
-        self.mask_length : int = 4       # in bytes
-        self.ident : any = None
-        self.enc_pairs: List[Tuple[int,int]] = None
+
         
     def __init__(self, **kwargs):
         """Construct Voter with default settings and random key."""
-        self.choice_length : int = 4    # in bytes
-        self.mask_length : int = 4       # in bytes
+        self.choice_length : int = 128   # in bytes
+        self.mask_length : int = 128       # in bytes
         self.ident : any = None
+        self.mask: int = None
+        self.mask_inv: int = None
         for key, value in kwargs.items():
             if key == 'choice_length':
                 self.choice_length = value
@@ -42,18 +53,24 @@ class Voter:
 
     def receive_enc_pairs(self,ep: List[Tuple[int,int]]) -> None:
         self.enc_pairs = ep
+    def generate_mask(self,rsa_n:int) -> None:
+                # Generate a random mask
+
+        while True:
+            mask = secrets.randbits(self.mask_length*8) % rsa_n
+            if mask > 1 and math.gcd(mask,rsa_n) == 1:
+                break
+        self.mask = mask
+        self.mask_inv = modinv(mask,rsa_n)
+    
     def generate_ballot(self,rsa_n:int,rsa_v:int,hash:Callable[[bytes],bytes]|Literal["sha256","sha512"] = "sha256") -> Tuple[int,int]:
         """Generate a ballot with the given RSA public key and hash function.
         
             hash - can be given in name (SHA256, SHA512) or as function.
         """
         
-        mask : int
-        _hash: Callable[[bytes],bytes]
         
-        if self.enc_pairs is None:
-            raise Exception("No encrypted pairs received.")
-        # Generate a random mask
+        _hash: Callable[[bytes],bytes]
         if type(hash) == str:
             match hash:
                 case "sha256":
@@ -65,16 +82,22 @@ class Voter:
         else:
             _hash = hash
         
-        while True:
-            mask = secrets.randbits(self.mask_length*8) % rsa_n
-            if mask > 1 and math.gcd(mask,rsa_n) == 1:
-                break
-        self.mask = mask
-        self.mask_inv = modinv(mask,rsa_n)
+        if self.mask is None or self.mask_inv is None:
+            self.generate_mask(rsa_n)
+        
+        mask = self.mask
+        assert mask is not None and mask > 1
+        
+        
+        if self.enc_pairs is None:
+            raise Exception("No encrypted pairs received.")
+
         
         # Generate the ballot
         b1orig,b2orig = self.enc_pairs[0]
         b1hash,b2hash = _hash(b1orig.to_bytes(self.choice_length,"big")+mask.to_bytes(self.mask_length,"big")),_hash(b2orig.to_bytes(self.choice_length,"big")+mask.to_bytes(self.mask_length,"big"))
         b1,b2 = int.from_bytes(b1orig.to_bytes(self.choice_length,"big")+b1hash,"big"),int.from_bytes(b2orig.to_bytes(self.choice_length,"big")+b2hash,"big")
-        return (b1*((self.mask**rsa_v)%rsa_n))%rsa_n,(b2*((self.mask**rsa_v)%rsa_n))%rsa_n
+        # print("b2",b2)
+        assert b1 < rsa_n and b2 < rsa_n
+        return (b1*pow(mask,rsa_v,rsa_n))%rsa_n,(b2*pow(mask,rsa_v,rsa_n))%rsa_n
              
