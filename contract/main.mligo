@@ -12,6 +12,20 @@ module Tally = struct
     raw_vote : nat;
     hash : bytes;
   }
+  type result_and_proof = {
+    result : nat;
+    proof : nat;
+  }
+  type init_params = {
+    rsa_key : rsa_key;
+    n : nat;
+    r : nat;
+    y : nat;
+  }
+  type state  =
+  | Uninitialized
+  | Started
+  | Finished
 
   type storage = {
     admin : address;
@@ -19,11 +33,16 @@ module Tally = struct
     vote_state : nat;
     vote_count : nat;
     n : nat;
-    status : nat;
+    r : nat;
+    y : nat;
+    status : state;
+    result : nat;
   }
 
   type return = operation list * storage
-
+  let uninitialized = Uninitialized
+  let started = Started
+  let finished = Finished
   (* Helper functions *)
   (*Fast modexp*)
   let fastmodexp (base: nat) (exp : nat) (m : nat) : nat =
@@ -85,8 +104,38 @@ module Tally = struct
   let choice : nat =
     decrypted_vote.raw_vote
   in
-  [], {store with vote_state = choice; vote_count = store.vote_count + 1n}
+  let new_state : nat = 
+    if store.vote_count = 0n then
+      choice mod store.n
+    else
+      (store.vote_state * choice) mod store.n
+  in
+  [], {store with vote_state = new_state; vote_count = store.vote_count + 1n}
 
+  [@entry] let init (param : init_params) (s : storage) : return = 
+  let () = 
+    if s.admin <> Tezos.get_source () then
+      failwith "Only admin can initialize the vote"
+  in
+  [], {s with status = Started; vote_count = 0n; vote_state = 1n;rsa_key = param.rsa_key; n = param.n; r = param.r; y = param.y}
+
+  [@entry] let finalize (rp: result_and_proof)(s : storage) : return =
+  let () = 
+    if s.status <> Started then
+      failwith "Vote must be initialized"
+  in
+  let () = 
+    if (fastmodexp rp.proof s.r s.n) * (fastmodexp s.y rp.result s.n) mod s.n <> s.vote_state then
+      failwith "Invalid result"
+  in
+  [],{s with status = Finished; result = rp.result}
+
+  [@view] let get_result() (s : storage) : nat = 
+  let () = 
+    if s.status <> Finished then
+      failwith "Vote must be finished"
+  in
+  s.result
 
 
 
