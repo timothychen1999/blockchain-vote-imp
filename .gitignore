@@ -2,3 +2,4 @@
 */.ligo
 test.py
 *.pyc
+test/
