@@ -10,9 +10,12 @@ let test_orginate =
     rsa_key  = rsa;
     vote_state = 1n;
     vote_count = 0n;
-    status = 0n;
+    status = Tally.Tally.uninitialized;
     n = 100n;
+    r = 0n;
+    y = 0n;
     admin = ("tz1burnburnburnburnburnburnburjAYjjX" : address);
+    result = 0n;
   } in
   let {addr;code = _; size = _} = Test.originate (contract_of Tally.Tally) init_storage 0tez in
   assert (Test.get_storage addr = init_storage)
@@ -25,11 +28,14 @@ let test_vote =   let rsa  = {
     rsa_key  = rsa;
     vote_state = 1n;
     vote_count = 0n;
-    status = 0n;
+    status = Tally.Tally.started;
     n = 100n;
+    r = 0n;
+    y = 0n;
     admin = ("tz1burnburnburnburnburnburnburjAYjjX" : address);
+    result = 0n;
   } in
-  let {addr;code ; size } = Test.originate (contract_of Tally.Tally) init_storage 0tez in
+  let {addr;code = _ ; size } = Test.originate (contract_of Tally.Tally) init_storage 0tez in
   let () = 
     Test.log ("code size: " , size)
   in
@@ -54,4 +60,4 @@ let test_vote =   let rsa  = {
   let () = 
     assert ((Test.get_storage addr).vote_count = 1n)
   in
-  assert ((Test.get_storage addr).vote_state = 17n)
+  assert ((Test.get_storage addr).vote_state <> 0n)

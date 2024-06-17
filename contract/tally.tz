@@ -1,15 +1,285 @@
-{ parameter (or (pair %set_rsa_key (nat %n) (nat %v)) (nat %set_n)) ;
+{ parameter
+    (or (pair %finalize (nat %result) (nat %proof))
+        (or (pair %init (pair %rsa_key (nat %n) (nat %v)) (nat %n) (nat %r) (nat %y))
+            (or (pair %vote (nat %v) (nat %mask) (nat %mask_inv))
+                (or (pair %set_rsa_key (nat %n) (nat %v)) (nat %set_n))))) ;
   storage
-    (pair (pair %rsa_key (nat %n) (nat %v)) (nat %vote_state) (nat %vote_count) (nat %n)) ;
-  code { UNPAIR ;
+    (pair (address %admin)
+          (pair %rsa_key (nat %n) (nat %v))
+          (nat %vote_state)
+          (nat %vote_count)
+          (nat %n)
+          (nat %r)
+          (nat %y)
+          (or %status (unit %uninitialized) (or (unit %started) (unit %finished)))
+          (nat %result)) ;
+  code { LAMBDA
+           (pair nat nat nat)
+           nat
+           { UNPAIR 3 ;
+             PUSH nat 1 ;
+             DUG 3 ;
+             PAIR 4 ;
+             LEFT nat ;
+             LOOP_LEFT
+               { UNPAIR 4 ;
+                 PUSH nat 0 ;
+                 DUP 3 ;
+                 COMPARE ;
+                 EQ ;
+                 IF { DROP 3 ; RIGHT (pair nat nat nat nat) }
+                    { PUSH nat 0 ;
+                      PUSH nat 2 ;
+                      DUP 4 ;
+                      EDIV ;
+                      IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                      CDR ;
+                      COMPARE ;
+                      EQ ;
+                      IF { DIG 3 ;
+                           DUP 4 ;
+                           PUSH nat 2 ;
+                           DIG 4 ;
+                           EDIV ;
+                           IF_NONE { PUSH string "DIV by 0" ; FAILWITH } {} ;
+                           CAR ;
+                           DIG 4 ;
+                           DUP 5 ;
+                           DIG 5 ;
+                           MUL ;
+                           EDIV ;
+                           IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                           CDR }
+                         { DUP 3 ;
+                           DUP 2 ;
+                           DIG 5 ;
+                           MUL ;
+                           EDIV ;
+                           IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                           CDR ;
+                           DUP 4 ;
+                           PUSH nat 2 ;
+                           DIG 4 ;
+                           EDIV ;
+                           IF_NONE { PUSH string "DIV by 0" ; FAILWITH } {} ;
+                           CAR ;
+                           DIG 4 ;
+                           DUP 5 ;
+                           DIG 5 ;
+                           MUL ;
+                           EDIV ;
+                           IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                           CDR } ;
+                      PAIR 4 ;
+                      LEFT nat } } } ;
+         SWAP ;
+         UNPAIR ;
          IF_LEFT
-           { UPDATE 1 }
-           { PUSH nat 1 ;
-             DUP 2 ;
+           { UNIT ;
+             LEFT unit ;
+             RIGHT unit ;
+             DUP 3 ;
+             GET 15 ;
              COMPARE ;
-             LE ;
-             IF { PUSH string "n must be greater than 1" ; FAILWITH } {} ;
-             UPDATE 6 } ;
+             NEQ ;
+             IF { PUSH string "Vote must be initialized" ; FAILWITH } {} ;
+             DUP 2 ;
+             GET 5 ;
+             DUP 3 ;
+             GET 9 ;
+             DUP 4 ;
+             GET 9 ;
+             DUP 4 ;
+             CAR ;
+             DUP 6 ;
+             GET 13 ;
+             PAIR 3 ;
+             DUP 6 ;
+             SWAP ;
+             EXEC ;
+             DUP 5 ;
+             GET 9 ;
+             DUP 6 ;
+             GET 11 ;
+             DUP 6 ;
+             CDR ;
+             PAIR 3 ;
+             DIG 6 ;
+             SWAP ;
+             EXEC ;
+             MUL ;
+             EDIV ;
+             IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+             CDR ;
+             COMPARE ;
+             NEQ ;
+             IF { PUSH string "Invalid result" ; FAILWITH } {} ;
+             SWAP ;
+             UNIT ;
+             RIGHT unit ;
+             RIGHT unit ;
+             UPDATE 15 ;
+             SWAP ;
+             CAR ;
+             UPDATE 16 }
+           { IF_LEFT
+               { DIG 2 ;
+                 DROP ;
+                 SOURCE ;
+                 DUP 3 ;
+                 CAR ;
+                 COMPARE ;
+                 NEQ ;
+                 IF { PUSH string "Only admin can initialize the vote" ; FAILWITH } {} ;
+                 SWAP ;
+                 UNIT ;
+                 LEFT unit ;
+                 RIGHT unit ;
+                 UPDATE 15 ;
+                 PUSH nat 0 ;
+                 UPDATE 7 ;
+                 PUSH nat 1 ;
+                 UPDATE 5 ;
+                 DUP 2 ;
+                 CAR ;
+                 UPDATE 3 ;
+                 DUP 2 ;
+                 GET 3 ;
+                 UPDATE 9 ;
+                 DUP 2 ;
+                 GET 5 ;
+                 UPDATE 11 ;
+                 SWAP ;
+                 GET 6 ;
+                 UPDATE 13 }
+               { IF_LEFT
+                   { DUP 2 ;
+                     GET 3 ;
+                     CAR ;
+                     DUP 2 ;
+                     GET 4 ;
+                     DUP 3 ;
+                     CAR ;
+                     MUL ;
+                     EDIV ;
+                     IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                     CDR ;
+                     DUP 3 ;
+                     GET 3 ;
+                     CAR ;
+                     DUP 4 ;
+                     GET 3 ;
+                     CDR ;
+                     DIG 2 ;
+                     PAIR 3 ;
+                     DIG 3 ;
+                     SWAP ;
+                     EXEC ;
+                     PUSH bytes
+                          0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 ;
+                     SWAP ;
+                     BYTES ;
+                     XOR ;
+                     PUSH nat 160 ;
+                     DUP 2 ;
+                     SIZE ;
+                     COMPARE ;
+                     NEQ ;
+                     IF { PUSH string "Invalid length" ; FAILWITH } {} ;
+                     DUP ;
+                     PUSH nat 128 ;
+                     PUSH nat 0 ;
+                     SLICE ;
+                     IF_NONE { PUSH string "SLICE" ; FAILWITH } {} ;
+                     SWAP ;
+                     PUSH nat 32 ;
+                     PUSH nat 128 ;
+                     SLICE ;
+                     IF_NONE { PUSH string "SLICE" ; FAILWITH } {} ;
+                     DUP 2 ;
+                     NAT ;
+                     PAIR ;
+                     PUSH bytes
+                          0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 ;
+                     DUP 4 ;
+                     GET 3 ;
+                     BYTES ;
+                     XOR ;
+                     DIG 2 ;
+                     CONCAT ;
+                     SHA256 ;
+                     DUP 2 ;
+                     CDR ;
+                     COMPARE ;
+                     NEQ ;
+                     IF { PUSH string "Invalid vote hash" ; FAILWITH } {} ;
+                     PUSH nat 1 ;
+                     DUP 4 ;
+                     GET 3 ;
+                     CAR ;
+                     DUP 4 ;
+                     GET 4 ;
+                     DIG 4 ;
+                     GET 3 ;
+                     MUL ;
+                     EDIV ;
+                     IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                     CDR ;
+                     COMPARE ;
+                     NEQ ;
+                     IF { PUSH string "Invalid vote format" ; FAILWITH } {} ;
+                     CAR ;
+                     PUSH nat 0 ;
+                     DUP 3 ;
+                     GET 7 ;
+                     COMPARE ;
+                     EQ ;
+                     IF { DUP 2 ;
+                          GET 9 ;
+                          SWAP ;
+                          EDIV ;
+                          IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                          CDR }
+                        { DUP 2 ;
+                          GET 9 ;
+                          SWAP ;
+                          DUP 3 ;
+                          GET 5 ;
+                          MUL ;
+                          EDIV ;
+                          IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
+                          CDR } ;
+                     DUP 2 ;
+                     SWAP ;
+                     UPDATE 5 ;
+                     PUSH nat 1 ;
+                     DIG 2 ;
+                     GET 7 ;
+                     ADD ;
+                     UPDATE 7 }
+                   { DIG 2 ;
+                     DROP ;
+                     IF_LEFT
+                       { UPDATE 3 }
+                       { PUSH nat 1 ;
+                         DUP 2 ;
+                         COMPARE ;
+                         LE ;
+                         IF { PUSH string "n must be greater than 1" ; FAILWITH } {} ;
+                         UPDATE 9 } } } } ;
          NIL operation ;
-         PAIR } }
+         PAIR } ;
+  view "get_result"
+       unit
+       nat
+       { CDR ;
+         UNIT ;
+         RIGHT unit ;
+         RIGHT unit ;
+         DUP 2 ;
+         GET 15 ;
+         COMPARE ;
+         NEQ ;
+         IF { PUSH string "Vote must be finished" ; FAILWITH } {} ;
+         GET 16 } }
 

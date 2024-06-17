@@ -136,7 +136,7 @@ module Tally = struct
       failwith "Vote must be finished"
   in
   s.result
-
+  
 
 
 
