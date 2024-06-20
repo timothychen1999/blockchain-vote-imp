@@ -37,6 +37,7 @@ module Tally = struct
     y : nat;
     status : state;
     result : nat;
+    used_ballot : nat big_set;
   }
 
   type return = operation list * storage
@@ -67,6 +68,16 @@ module Tally = struct
   [@entry] let set_rsa_key (key : rsa_key) (store : storage) : return =
   [], {store with rsa_key = key}
   [@entry] let vote (vp : vote_params) (store :storage) : return =
+  let () = 
+    if store.status <> Started then
+      failwith "Vote must be initialized"
+  in
+  let new_used: nat big_set =
+    if not (Big_set.mem vp.v store.used_ballot) then
+      failwith "Vote duplicate"
+    else 
+      Big_set.add vp.v store.used_ballot
+  in
   let unmasked: nat = 
     (vp.v * vp.mask_inv) mod store.rsa_key.n 
   in
@@ -104,20 +115,26 @@ module Tally = struct
   let choice : nat =
     decrypted_vote.raw_vote
   in
+  let invaild_choice : bool = 
+    choice = 0n
+  in
   let new_state : nat = 
     if store.vote_count = 0n then
       choice mod store.n
     else
       (store.vote_state * choice) mod store.n
   in
-  [], {store with vote_state = new_state; vote_count = store.vote_count + 1n}
+  if invaild_choice then
+    [], {store with vote_count = store.vote_count}
+  else
+  [], {store with vote_state = new_state; vote_count = store.vote_count + 1n;used_ballot = new_used}
 
   [@entry] let init (param : init_params) (s : storage) : return = 
   let () = 
     if s.admin <> Tezos.get_source () then
       failwith "Only admin can initialize the vote"
   in
-  [], {s with status = Started; vote_count = 0n; vote_state = 1n;rsa_key = param.rsa_key; n = param.n; r = param.r; y = param.y}
+  [], {s with status = Started; vote_count = 0n; vote_state = 1n;rsa_key = param.rsa_key; n = param.n; r = param.r; y = param.y; used_ballot = Big_map.empty}
 
   [@entry] let finalize (rp: result_and_proof)(s : storage) : return =
   let () = 

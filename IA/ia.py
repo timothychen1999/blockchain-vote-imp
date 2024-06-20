@@ -1,6 +1,6 @@
 from typing import Callable, Tuple
 import Crypto.PublicKey.RSA as RSA
-
+import pathlib
 class IA:
     def __init__(self):
         """Construct IA with default settings and random key."""
@@ -28,3 +28,15 @@ class IA:
     def get_rsa_public_key(self)->Tuple[int,int]:
         """Return the RSA public key."""
         return (self.rsa_key.n,self.rsa_key.e)
+    def dump_key(self,filename:str="./test/ia-key") -> None:
+        """Dump the RSA key to a file."""
+        pathlib.Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(filename).unlink(missing_ok=True)
+        with open(filename,'w') as f:
+            f.write(self.rsa_key.export_key().decode())
+    def load_key(self,filename:str="./test/ia-key") -> None:
+        """Load the RSA key from a file."""
+        with open(filename) as f:
+            self.rsa_key = RSA.import_key(f.read())
+        assert self.rsa_key.has_private()
+    

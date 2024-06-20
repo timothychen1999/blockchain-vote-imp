@@ -12,7 +12,8 @@
           (nat %r)
           (nat %y)
           (or %status (unit %uninitialized) (or (unit %started) (unit %finished)))
-          (nat %result)) ;
+          (nat %result)
+          (big_map %used_ballot nat unit)) ;
   code { LAMBDA
            (pair nat nat nat)
            nat
@@ -121,7 +122,7 @@
              UPDATE 15 ;
              SWAP ;
              CAR ;
-             UPDATE 16 }
+             UPDATE 17 }
            { IF_LEFT
                { DIG 2 ;
                  DROP ;
@@ -151,28 +152,46 @@
                  UPDATE 11 ;
                  SWAP ;
                  GET 6 ;
-                 UPDATE 13 }
+                 UPDATE 13 ;
+                 EMPTY_BIG_MAP nat unit ;
+                 UPDATE 18 }
                { IF_LEFT
-                   { DUP 2 ;
+                   { UNIT ;
+                     LEFT unit ;
+                     RIGHT unit ;
+                     DUP 3 ;
+                     GET 15 ;
+                     COMPARE ;
+                     NEQ ;
+                     IF { PUSH string "Vote must be initialized" ; FAILWITH } {} ;
+                     DUP 2 ;
+                     GET 18 ;
+                     DUP 2 ;
+                     CAR ;
+                     MEM ;
+                     NOT ;
+                     IF { PUSH string "Vote duplicate" ; FAILWITH }
+                        { DUP 2 ; GET 18 ; UNIT ; SOME ; DUP 3 ; CAR ; UPDATE } ;
+                     DUP 3 ;
                      GET 3 ;
                      CAR ;
-                     DUP 2 ;
-                     GET 4 ;
                      DUP 3 ;
+                     GET 4 ;
+                     DUP 4 ;
                      CAR ;
                      MUL ;
                      EDIV ;
                      IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
                      CDR ;
-                     DUP 3 ;
+                     DUP 4 ;
                      GET 3 ;
                      CAR ;
-                     DUP 4 ;
+                     DUP 5 ;
                      GET 3 ;
                      CDR ;
                      DIG 2 ;
                      PAIR 3 ;
-                     DIG 3 ;
+                     DIG 4 ;
                      SWAP ;
                      EXEC ;
                      PUSH bytes
@@ -201,7 +220,7 @@
                      PAIR ;
                      PUSH bytes
                           0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 ;
-                     DUP 4 ;
+                     DUP 5 ;
                      GET 3 ;
                      BYTES ;
                      XOR ;
@@ -214,12 +233,12 @@
                      NEQ ;
                      IF { PUSH string "Invalid vote hash" ; FAILWITH } {} ;
                      PUSH nat 1 ;
-                     DUP 4 ;
+                     DUP 5 ;
                      GET 3 ;
                      CAR ;
-                     DUP 4 ;
+                     DUP 5 ;
                      GET 4 ;
-                     DIG 4 ;
+                     DIG 5 ;
                      GET 3 ;
                      MUL ;
                      EDIV ;
@@ -230,33 +249,40 @@
                      IF { PUSH string "Invalid vote format" ; FAILWITH } {} ;
                      CAR ;
                      PUSH nat 0 ;
-                     DUP 3 ;
+                     DUP 4 ;
                      GET 7 ;
                      COMPARE ;
                      EQ ;
-                     IF { DUP 2 ;
+                     IF { DUP 3 ;
                           GET 9 ;
-                          SWAP ;
+                          DUP 2 ;
                           EDIV ;
                           IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
                           CDR }
-                        { DUP 2 ;
+                        { DUP 3 ;
                           GET 9 ;
-                          SWAP ;
-                          DUP 3 ;
+                          DUP 2 ;
+                          DUP 5 ;
                           GET 5 ;
                           MUL ;
                           EDIV ;
                           IF_NONE { PUSH string "MOD by 0" ; FAILWITH } {} ;
                           CDR } ;
-                     DUP 2 ;
-                     SWAP ;
-                     UPDATE 5 ;
-                     PUSH nat 1 ;
+                     PUSH nat 0 ;
                      DIG 2 ;
-                     GET 7 ;
-                     ADD ;
-                     UPDATE 7 }
+                     COMPARE ;
+                     EQ ;
+                     IF { DROP 2 ; DUP ; GET 7 ; UPDATE 7 }
+                        { DUP 3 ;
+                          SWAP ;
+                          UPDATE 5 ;
+                          PUSH nat 1 ;
+                          DIG 3 ;
+                          GET 7 ;
+                          ADD ;
+                          UPDATE 7 ;
+                          SWAP ;
+                          UPDATE 18 } }
                    { DIG 2 ;
                      DROP ;
                      IF_LEFT
@@ -281,5 +307,5 @@
          COMPARE ;
          NEQ ;
          IF { PUSH string "Vote must be finished" ; FAILWITH } {} ;
-         GET 16 } }
+         GET 17 } }
 
