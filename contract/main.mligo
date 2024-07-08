@@ -19,6 +19,7 @@ module Tally = struct
   }
   type init_params = {
     rsa_key : rsa_key;
+    va_key : rsa_key;
     n : nat;
     r : nat;
     y : nat;
@@ -31,6 +32,7 @@ module Tally = struct
   type storage = {
     admin : address;
     rsa_key : rsa_key;
+    va_key: rsa_key;
     vote_state : nat;
     vote_count : nat;
     n : nat;
@@ -57,7 +59,20 @@ module Tally = struct
         fastmodexp_ (base * base mod m) (exp / 2n) m (acc * base mod m)
     in
     fastmodexp_ base exp m 1n
-  [@inline] let check_sig (msg:nat) (sigs:nat) : bool = true
+
+
+  [@inline]let check_sig (msg:nat) (sigs:nat) (rsa : rsa_key) : bool = 
+  let bytes_msg : bytes = bytes msg lxor 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  in 
+  let hash : bytes = Crypto.sha256 bytes_msg
+  in
+  (* PKCS PADDING*)
+  let padded : bytes = Bytes.concat 0x003031300D060960864801650304020105000420 hash
+  in 
+  let padded_msg : nat = nat padded
+  in
+  fastmodexp sigs rsa.v rsa.n = padded_msg
+
   (* Entrypoints *)
 
   [@entry] let set_n (nv : nat) (store : storage) : return = 
@@ -80,7 +95,7 @@ module Tally = struct
       Big_set.add vp.v store.used_ballot
   in
   let ()=
-    if not (check_sig vp.v vp.ballot_sig) then
+    if not (check_sig vp.v vp.ballot_sig store.va_key) then
       failwith "Invalid signature"
   in
   let unmasked: nat = 
@@ -159,7 +174,4 @@ module Tally = struct
   in
   s.result
   
-
-
-
 end
