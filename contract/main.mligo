@@ -7,6 +7,7 @@ module Tally = struct
     v : nat;
     mask : nat;
     mask_inv : nat;
+    ballot_sig : nat;
   }
   type decrypted_vote = {
     raw_vote : nat;
@@ -56,7 +57,7 @@ module Tally = struct
         fastmodexp_ (base * base mod m) (exp / 2n) m (acc * base mod m)
     in
     fastmodexp_ base exp m 1n
-
+  [@inline] let check_sig (msg:nat) (sigs:nat) : bool = true
   (* Entrypoints *)
 
   [@entry] let set_n (nv : nat) (store : storage) : return = 
@@ -77,6 +78,10 @@ module Tally = struct
       failwith "Vote duplicate"
     else 
       Big_set.add vp.v store.used_ballot
+  in
+  let ()=
+    if not (check_sig vp.v vp.ballot_sig) then
+      failwith "Invalid signature"
   in
   let unmasked: nat = 
     (vp.v * vp.mask_inv) mod store.rsa_key.n 
