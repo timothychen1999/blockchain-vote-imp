@@ -1,13 +1,14 @@
+import hashlib
 import sympy
 import sys
 import secrets
 import math
 from typing import List,Tuple,Dict
 import pathlib
-
+from Crypto.PublicKey import RSA
 
 sys.setrecursionlimit(10**6)
-
+padding : bytes = bytes.fromhex("003031300D060960864801650304020105000420")
 
 def extended_gcd(a:int,b:int) -> Tuple[int,int,int]:
     """Extended Euclidean Algorithm to find the GCD and the coefficients of a,b."""
@@ -37,7 +38,7 @@ class VA:
     def __init__(self, **kwargs):
         """Construct VA with default settings and random key."""
         self.keygen()
-        
+        self.rsa = RSA.generate(4096)
     
     # Benaloh keygen
     def keygen(self,N:int = 64*8,r : int = 10**9):
@@ -117,6 +118,13 @@ class VA:
     def get_commitment(self,enc_pair:List[Tuple[int,int]]) -> List[int]:
         """Get the commitment of the encryption pairs."""
         return [self.decrypt_with_cert(ep[0])[0] for ep in enc_pair]
+    def sign_ballot(self,ballot:Tuple[int,int])->Tuple[int,int]:
+        b1,b2 = ballot
+        b1b, b2b = int.to_bytes(b1,160,"big"), int.to_bytes(b2,160,"big")
+        h1,h2 = padding+hashlib.sha256(b1b).digest(),padding+hashlib.sha256(b2b).digest()
+        assert self.rsa.can_sign()
+        return self.rsa.sign(h1),self.rsa.sign(h2)
+        
     def get_interactive_proof(self,b : Beacon,enc_pair:List[Tuple[int,int]]) -> Tuple[int,List[Tuple[Tuple[int,int],Tuple[int,int]]]]:
         """Get the interactive proof of the encryption pairs."""
         # Drop the first pair
@@ -126,7 +134,7 @@ class VA:
         beacon_output = b.get_bits(seed,len(enc_pair))
         result = []
         for ep, bit in zip(enc_pair,beacon_output):
-            if b:
+            if bit:
                 result.append(self.decrypt_with_cert(ep[0]),self.decrypt_with_cert(ep[1]))
             else:
                 fp0inv = modinv(fp[0],self.n)
@@ -145,3 +153,4 @@ class VA:
         """Load the Benaloh key from a file."""
         with open(filename) as f:
             self.n,self.y,self.r,self.p,self.q = map(int,f.read().split())
+    

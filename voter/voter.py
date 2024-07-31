@@ -39,7 +39,7 @@ class Voter:
     def __init__(self, **kwargs):
         """Construct Voter with default settings and random key."""
         self.choice_length : int = 128   # in bytes
-        self.mask_length : int = 128       # in bytes
+        self.mask_length : int = 128     # in bytes
         self.ident : any = None
         self.mask: int = None
         self.mask_inv: int = None
