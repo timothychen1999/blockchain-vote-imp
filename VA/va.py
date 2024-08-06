@@ -120,18 +120,22 @@ class VA:
         return [self.decrypt_with_cert(ep[0])[0] for ep in enc_pair]
     def sign_ballot(self,ballot:Tuple[int,int])->Tuple[int,int]:
         b1,b2 = ballot
+        # Check if the ballot is valid
+        
         b1b, b2b = int.to_bytes(b1,160,"big"), int.to_bytes(b2,160,"big")
         h1,h2 = padding+hashlib.sha256(b1b).digest(),padding+hashlib.sha256(b2b).digest()
         assert self.rsa.can_sign()
         return self.rsa.sign(h1),self.rsa.sign(h2)
-        
+    def get_rsa_public_key(self)->Tuple[int,int]:
+        """Return the RSA public key."""
+        return (self.rsa.n,self.rsa.e)   
     def get_interactive_proof(self,b : Beacon,enc_pair:List[Tuple[int,int]]) -> Tuple[int,List[Tuple[Tuple[int,int],Tuple[int,int]]]]:
         """Get the interactive proof of the encryption pairs."""
         # Drop the first pair
         fp = enc_pair[0]
         enc_pair = enc_pair[1:]
         seed = secrets.randbits(256)
-        beacon_output = b.get_bits(seed,len(enc_pair))
+        beacon_output = b.get_bits(seed=seed,n=len(enc_pair))
         result = []
         for ep, bit in zip(enc_pair,beacon_output):
             if bit:
