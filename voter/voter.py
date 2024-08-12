@@ -101,3 +101,11 @@ class Voter:
         assert b1 < rsa_n and b2 < rsa_n
         return (b1*pow(mask,rsa_v,rsa_n))%rsa_n,(b2*pow(mask,rsa_v,rsa_n))%rsa_n
              
+    def verfy_proof(self,proof:List[Tuple[Tuple[int,int],Tuple[int,int]]],beacon:List[int],n:int,r:int,y:int) -> bool:
+        for ((d1,p1),(d2,p2)),b,eps in zip(proof,beacon,self.enc_pairs):
+            b1,b2 = eps
+            if b:
+                pass
+            else:
+                pass
+        return True

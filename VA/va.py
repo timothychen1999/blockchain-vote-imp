@@ -86,7 +86,7 @@ class VA:
             x = secrets.randbelow(self.n-1)+1
         assert x != 0
         assert self.y != 0
-        print (pow(self.y,m,self.n),pow(x,self.r,self.n))
+        #print (pow(self.y,m,self.n),pow(x,self.r,self.n))
         
         return (pow(self.y,m,self.n)*pow(x,self.r,self.n)) % self.n
     def decrypt_with_cert (self,z:int) -> Tuple[int,int]:
@@ -114,7 +114,7 @@ class VA:
     def generate_enc_pair(self) -> List[Tuple[int,int]]:
         """Generate an encryption pair."""
         
-        return [(self.encrypt(0),self.encrypt(1)) for _ in range(self.N+1)]
+        return [(max(ep),min(ep)) for ep in [(self.encrypt(0),self.encrypt(1)) for _ in range(self.N+1)]]
     def get_commitment(self,enc_pair:List[Tuple[int,int]]) -> List[int]:
         """Get the commitment of the encryption pairs."""
         return [self.decrypt_with_cert(ep[0])[0] for ep in enc_pair]
@@ -122,10 +122,12 @@ class VA:
         b1,b2 = ballot
         # Check if the ballot is valid
         
-        b1b, b2b = int.to_bytes(b1,160,"big"), int.to_bytes(b2,160,"big")
+        b1b, b2b = int.to_bytes(b1,512,"big"), int.to_bytes(b2,512,"big")
         h1,h2 = padding+hashlib.sha256(b1b).digest(),padding+hashlib.sha256(b2b).digest()
         assert self.rsa.can_sign()
-        return self.rsa.sign(h1),self.rsa.sign(h2)
+        ih1,ih2 = int.from_bytes(h1,"big"),int.from_bytes(h2,"big")
+        return (pow(ih1,self.rsa.d,self.rsa.n),pow(ih2,self.rsa.d,self.rsa.n))
+        
     def get_rsa_public_key(self)->Tuple[int,int]:
         """Return the RSA public key."""
         return (self.rsa.n,self.rsa.e)   
