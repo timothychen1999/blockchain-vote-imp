@@ -117,6 +117,7 @@ class VA:
         return [(max(ep),min(ep)) for ep in [(self.encrypt(0),self.encrypt(1)) for _ in range(self.N+1)]]
     def get_commitment(self,enc_pair:List[Tuple[int,int]]) -> List[int]:
         """Get the commitment of the encryption pairs."""
+        """Check signed ballot"""
         return [self.decrypt_with_cert(ep[0])[0] for ep in enc_pair]
     def sign_ballot(self,ballot:Tuple[int,int])->Tuple[int,int]:
         b1,b2 = ballot
@@ -141,13 +142,14 @@ class VA:
         result = []
         for ep, bit in zip(enc_pair,beacon_output):
             if bit:
-                result.append(self.decrypt_with_cert(ep[0]),self.decrypt_with_cert(ep[1]))
+                result.append((self.decrypt_with_cert(ep[0]),self.decrypt_with_cert(ep[1])))
             else:
                 fp0inv = modinv(fp[0],self.n)
                 fp1inv = modinv(fp[1],self.n)
-                s1 = (self.decrypt_with_cert(ep[0]*fp0inv%self.n),self.decrypt_with_cert(ep[1]*fp0inv%self.n))
-                s2 = (self.decrypt_with_cert(ep[0]*fp1inv%self.n),self.decrypt_with_cert(ep[1]*fp1inv%self.n))
-                result.append(s2 if s1[0][0]==0 else s1)           
+                fp0d = self.decrypt_with_cert(fp[0])[0]               
+                ep0d = self.decrypt_with_cert(ep[0])[0]
+                r = (self.decrypt_with_cert((ep[0]*fp0inv)%self.n),(self.decrypt_with_cert((ep[1]*fp1inv)%self.n))) if ep0d == fp0d else (self.decrypt_with_cert((ep[1]*fp0inv)%self.n),(self.decrypt_with_cert((ep[0]*fp1inv)%self.n)))
+                result.append(r)         
         return (seed,result)
     def dump_key(self,filename:str="./test/va-key") -> None:
         """Dump the Benaloh key to a file."""
